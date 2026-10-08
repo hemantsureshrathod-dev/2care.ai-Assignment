@@ -1,0 +1,71 @@
+// CareBook AI - Primary Neon PostgreSQL Schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum SlotStatus {
+  AVAILABLE
+  BOOKED
+  UNAVAILABLE
+}
+
+enum AppointmentStatus {
+  CONFIRMED
+  CANCELLED
+}
+
+model Doctor {
+  id           String             @id @default(cuid())
+  name         String
+  specialty    String
+  location     String             @default("CareBook Central Clinic, Suite 400")
+  active       Boolean            @default(true)
+  createdAt    DateTime           @default(now())
+  slots        AvailabilitySlot[]
+  appointments Appointment[]
+
+  @@index([specialty])
+  @@index([active])
+}
+
+model AvailabilitySlot {
+  id          String       @id @default(cuid())
+  doctorId    String
+  date        String       // Format: YYYY-MM-DD
+  startTime   String       // Format: HH:mm (e.g. 09:00)
+  endTime     String       // Format: HH:mm (e.g. 09:30)
+  status      SlotStatus   @default(AVAILABLE)
+  createdAt   DateTime     @default(now())
+  
+  doctor      Doctor       @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  appointment Appointment?
+
+  @@unique([doctorId, date, startTime])
+  @@index([doctorId, date])
+  @@index([status])
+}
+
+model Appointment {
+  id           String            @id @default(cuid())
+  doctorId     String
+  slotId       String?           @unique
+  patientName  String
+  patientPhone String
+  date         String            // Format: YYYY-MM-DD
+  startTime    String            // Format: HH:mm
+  endTime      String            // Format: HH:mm
+  status       AppointmentStatus @default(CONFIRMED)
+  createdAt    DateTime          @default(now())
+
+  doctor       Doctor            @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  slot         AvailabilitySlot? @relation(fields: [slotId], references: [id])
+
+  @@index([doctorId, date])
+  @@index([patientPhone])
+}
